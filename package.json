@@ -1,0 +1,50 @@
+{
+  "name": "dual-rail-checkout-kit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Drop-in Next.js 15 checkout kit with hot-swappable PsiFi + CardsShield/KingsGate rails. One env var picks which iframe renders. No PCI scope expansion. Built for AI website builders.",
+  "keywords": [
+    "checkout",
+    "payments",
+    "embedded-checkout",
+    "iframe",
+    "psifi",
+    "cardsshield",
+    "kingsgate",
+    "paypal",
+    "apple-pay",
+    "google-pay",
+    "pci-saq-a",
+    "failover",
+    "rail-switching",
+    "nextjs",
+    "react-19",
+    "agents",
+    "drop-in"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "lucide-react": "^0.469.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "svix": "^1.93.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.0"
+  }
+}
