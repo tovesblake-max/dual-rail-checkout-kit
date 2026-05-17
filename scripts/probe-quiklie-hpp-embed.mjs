@@ -1,7 +1,7 @@
 // Probe whether your Quiklie merchant's HPP can be embedded in an
-// iframe from your site's origin. Mints a $0.50 test session and
-// inspects the X-Frame-Options + frame-ancestors CSP headers on the
-// hosted page URL.
+// iframe from your site's origin. Mints a test session and inspects
+// the X-Frame-Options + frame-ancestors CSP headers on the hosted
+// page URL.
 //
 // Run from project root:
 //   node ./scripts/probe-quiklie-hpp-embed.mjs
@@ -10,10 +10,26 @@
 // you use `read -s`):
 //   QUIKLIE_API_KEY=... QUIKLIE_MERCHANT_ID=... node ./scripts/probe-quiklie-hpp-embed.mjs
 //
+// AMOUNT CONFIGURATION
+// ────────────────────
+// The probe defaults to $20.00, which clears every Quiklie minimum-
+// transaction-amount floor we've seen in the wild (most merchants
+// either have no minimum or set it between $5-$15). If your merchant
+// has a higher floor, override:
+//
+//   PROBE_AMOUNT=50 node ./scripts/probe-quiklie-hpp-embed.mjs
+//
+// IMPORTANT: a too-low amount returns the same statusCode 5 "ERROR"
+// envelope as "HPP not provisioned" / "wrong midType," just with a
+// different `message`. The probe distinguishes them — but if you see
+// it report "ERROR — amount below merchant minimum," bump
+// PROBE_AMOUNT above your merchant's floor and re-run.
+//
 // What it does:
 //   1. Reads creds from process.env, then .env.local, then
 //      .env.production.local (in that order).
-//   2. POSTs a $0.50 test session to api.quiklie.com/api/v2/process-payment/hpp.
+//   2. POSTs a test session to api.quiklie.com/api/v2/process-payment/hpp
+//      for $PROBE_AMOUNT (default $20.00).
 //   3. Parses the response, extracts `quikleeRedirectUrl`.
 //   4. GETs that URL and inspects:
 //        - X-Frame-Options
@@ -23,9 +39,9 @@
 //
 // Side effects:
 //   - Creates a real row in your Quiklie merchant dashboard. The
-//     session is for $0.50 and will never be funded; Quiklie expires
-//     it after their TTL. Safe to ignore.
-//   - Does NOT charge any card (no card data is sent).
+//     session is never funded (no card data is sent) and Quiklie
+//     expires it after their TTL. Safe to ignore in the dashboard.
+//   - Does NOT charge any card.
 //
 // Common failure modes (and what they mean):
 //   - statusCode 5 "No eligible payment processors available"
@@ -72,6 +88,17 @@ const SITE_URL = pickEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000")
 const MIDTYPE = pickEnv("NEXT_PUBLIC_QUIKLIE_HPP_MIDTYPE") === "THREE_D"
   ? "THREE_D"
   : "TWO_D";
+// Default $20 — safely above every per-merchant minimum we've seen.
+// Override with PROBE_AMOUNT=NN if your merchant's floor is higher.
+const PROBE_AMOUNT = (() => {
+  const raw = pickEnv("PROBE_AMOUNT", "20");
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) {
+    console.error(`Invalid PROBE_AMOUNT=${raw} — must be a positive number. Using 20.`);
+    return 20;
+  }
+  return n;
+})();
 
 if (!QUIKLIE_API_KEY || !QUIKLIE_MERCHANT_ID) {
   console.error("❌ Missing Quiklie credentials.");
@@ -90,10 +117,11 @@ console.log(`Merchant ID:    ${QUIKLIE_MERCHANT_ID}`);
 console.log(`midType:        ${MIDTYPE}`);
 console.log(`Descriptor:     ${QUIKLIE_DESCRIPTOR}`);
 console.log(`Parent origin:  ${SITE_URL}`);
+console.log(`Test amount:    $${PROBE_AMOUNT.toFixed(2)} (override via PROBE_AMOUNT env)`);
 console.log();
 
-// ── Step 1: mint a $0.50 test HPP session ─────────────────────
-console.log("Step 1: minting a $0.50 test HPP session…");
+// ── Step 1: mint the test HPP session ─────────────────────────
+console.log(`Step 1: minting a $${PROBE_AMOUNT.toFixed(2)} test HPP session…`);
 
 const testOrderRef = `PROBE-${Date.now().toString(36).toUpperCase()}`;
 const mintBody = {
@@ -102,7 +130,7 @@ const mintBody = {
   lastName: "Tester",
   email: "probe@example.com",
   phone: "8005551234",
-  amount: 0.5,
+  amount: PROBE_AMOUNT,
   currencyCode: "USD",
   address: "1 Probe Lane",
   zipCode: "10001",
@@ -149,7 +177,16 @@ if (!mintData.quikleeRedirectUrl) {
   console.error();
   if (Number(mintData.statusCode) === 5) {
     const msg = (mintData.message || "").toLowerCase();
-    if (msg.includes("processor")) {
+    // Amount-floor rejection — Quiklie's wording varies but typically
+    // contains "minimum", "amount", or "below". Many merchants have a
+    // per-account minimum (often $5-$15). The probe defaults to $20
+    // to clear most floors; if your merchant requires more, bump
+    // PROBE_AMOUNT.
+    if (msg.includes("minimum") || msg.includes("below") || msg.includes("amount")) {
+      console.error(`DIAGNOSIS: Amount $${PROBE_AMOUNT.toFixed(2)} is below your merchant's minimum.`);
+      console.error(`           Re-run with a higher amount:`);
+      console.error(`           PROBE_AMOUNT=50 node ./scripts/probe-quiklie-hpp-embed.mjs`);
+    } else if (msg.includes("processor")) {
       console.error("DIAGNOSIS: HPP is not provisioned on merchant " + QUIKLIE_MERCHANT_ID + ".");
       console.error("           Email Quiklie support and ask them to enable HPP routing.");
     } else if (msg.includes("mid")) {
@@ -159,6 +196,7 @@ if (!mintData.quikleeRedirectUrl) {
     } else {
       console.error("DIAGNOSIS: statusCode 5 — Quiklie's routing layer rejected.");
       console.error("           Contact Quiklie support with this output.");
+      console.error(`           (Also worth bumping PROBE_AMOUNT above $${PROBE_AMOUNT.toFixed(2)} in case it's an amount-floor issue with an unfamiliar message format.)`);
     }
   }
   process.exit(1);

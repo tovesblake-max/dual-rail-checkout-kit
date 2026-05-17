@@ -10,12 +10,13 @@ Common typos to watch for: `psify` (missing final `i`), `cardshield` (missing `s
 
 ## Quiklie returns `statusCode: 5` on every mint
 
-Code 5 is Quiklie's "ERROR" — routing failure. Its meaning is in the `message` field:
+Code 5 is Quiklie's "ERROR" — routing failure. Three sub-causes, distinguished by the `message` field:
 
-| `message` text | What it means | Fix |
+| `message` text contains | What it means | Fix |
 |---|---|---|
-| `"No eligible payment processors available for the requested transaction"` | HPP flow is not provisioned on your merchant account | Email Quiklie support: "Please enable HPP routing (`/api/v2/process-payment/hpp`) on merchant ID `<your-id>`." |
-| `"No eligible MIDs available for the requested transaction"` | HPP is provisioned but your `midType` doesn't match the lane | Flip `NEXT_PUBLIC_QUIKLIE_HPP_MIDTYPE` to the opposite value (`TWO_D` ↔ `THREE_D`) and retry |
+| `"minimum"`, `"amount"`, `"below"` | The transaction amount is under your merchant's per-account minimum | Bump the amount above your merchant's floor. For the probe: `PROBE_AMOUNT=50 node ./scripts/probe-quiklie-hpp-embed.mjs`. For checkout: enforce a minimum cart total at the catalog or pricing layer. |
+| `"No eligible payment processors available"` | HPP flow is not provisioned on your merchant account | Email Quiklie support: "Please enable HPP routing (`/api/v2/process-payment/hpp`) on merchant ID `<your-id>`." |
+| `"No eligible MIDs available"` | HPP is provisioned but your `midType` doesn't match the lane | Flip `NEXT_PUBLIC_QUIKLIE_HPP_MIDTYPE` to the opposite value (`TWO_D` ↔ `THREE_D`) and retry |
 
 Run the probe to diagnose which case you're in:
 
@@ -23,7 +24,7 @@ Run the probe to diagnose which case you're in:
 QUIKLIE_API_KEY=... QUIKLIE_MERCHANT_ID=... node ./scripts/probe-quiklie-hpp-embed.mjs
 ```
 
-The script reads the `message` field and tells you which fix to apply.
+The script reads the `message` field and tells you which fix to apply, including the right `PROBE_AMOUNT` to use if you're hitting an amount-floor.
 
 ## Iframe loads but stays blank (cardsshield or psifi)
 
