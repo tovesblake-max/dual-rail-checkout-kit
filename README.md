@@ -14,14 +14,17 @@ This kit gives you two production-grade card rails wired in parallel, both kept 
 
 ---
 
-## The two rails
+## The three rails
 
-| Rail | Component | Backend | Settles | Use when |
+| Rail | UX shape | Backend | Settles | Use when |
 | --- | --- | --- | --- | --- |
-| `cardsshield` | `<CardsShieldEmbeddedFrame>` | KingsGate API 1.2 → `/api/checkout/express` | Weekly to bank, PayPal owns ID verification, 0% reserve | Default. Near-zero chargebacks. ~3-4% blended rate. |
-| `psifi` | `<PsifiEmbeddedFrame>` | PsiFi v2 sessions → `/api/checkout/express-psifi` | Daily crypto to wallet, no KYC, no reserve | KingsGate down. Apple Pay / Google Pay / crypto / fiat in one iframe. ~10% rate. |
+| `cardsshield` | `<CardsShieldEmbeddedFrame>` (inline iframe, auto-fire) | KingsGate API 1.2 → `/api/checkout/express` | Weekly to bank, PayPal owns ID verification, 0% reserve | Default. Near-zero chargebacks. ~3-4% blended rate. |
+| `psifi` | `<PsifiEmbeddedFrame>` (inline iframe, auto-fire) | PsiFi v2 sessions → `/api/checkout/express-psifi` | Daily crypto to wallet, no KYC, no reserve | KingsGate down. Apple Pay / Google Pay / crypto / fiat in one iframe. ~10% rate. |
+| `quiklie` | "Pay $X.XX" button → full-page redirect to Quiklie HPP | Quiklie HPP → `/api/checkout/express-quiklie-hpp` | Per Quiklie merchant agreement | High-risk-friendly card processor. PCI SAQ-A via hosted page. No embedded iframe (Quiklie's HPP X-Frame-Options behavior untested). |
 
-Both ship a "single combined form → auto-fire iframe as soon as shipping validates → no Pay button" UX. Both handle coupon re-mints, address edits, and abandoned cart cleanup symmetrically.
+`cardsshield` and `psifi` ship the same "single form → auto-fire inline iframe as soon as shipping validates → no Pay button" UX. `quiklie` uses the same form + auto-fire mint, but renders an explicit "Pay" button instead of an iframe (HPP only).
+
+All three handle coupon re-mints, address edits, and abandoned cart cleanup symmetrically.
 
 ---
 

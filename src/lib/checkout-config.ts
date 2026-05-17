@@ -28,7 +28,7 @@
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  */
 
-const VALID_RAILS = ["cardsshield", "psifi"] as const;
+const VALID_RAILS = ["cardsshield", "psifi", "quiklie"] as const;
 export type CardRail = (typeof VALID_RAILS)[number];
 
 const RAW = (process.env.NEXT_PUBLIC_PRIMARY_CARD_RAIL ?? "cardsshield")
@@ -49,4 +49,8 @@ export const CARD_RAIL: CardRail = RAW as CardRail;
  * `CARD_RAIL === "cardsshield" ? "KingsGate" : "PsiFi"`.
  */
 export const ACTIVE_RAIL_LABEL: string =
-  CARD_RAIL === "cardsshield" ? "KingsGate" : "PsiFi";
+  CARD_RAIL === "cardsshield"
+    ? "KingsGate"
+    : CARD_RAIL === "quiklie"
+      ? "Quiklie"
+      : "PsiFi";

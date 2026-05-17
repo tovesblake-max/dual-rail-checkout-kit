@@ -4,14 +4,15 @@ You're an AI integrating this kit into an existing Next.js site. Read this file 
 
 ## What this kit is
 
-A drop-in dual-rail checkout module for Next.js 15 (App Router) + React 19. Two payment gateways are wired in parallel:
+A drop-in checkout module for Next.js 15 (App Router) + React 19. Three payment gateways are wired in parallel:
 
-- **CardsShield / KingsGate** — PayPal-backed, weekly bank settlement, near-zero chargebacks. PCI SAQ-A.
-- **PsiFi** — Crypto-settled, daily payouts, no KYC, unified Apple Pay / Google Pay / card / crypto. PCI SAQ-A.
+- **CardsShield / KingsGate** — PayPal-backed, weekly bank settlement, near-zero chargebacks. PCI SAQ-A. Inline auto-fire iframe.
+- **PsiFi** — Crypto-settled, daily payouts, no KYC, unified Apple Pay / Google Pay / card / crypto. PCI SAQ-A. Inline auto-fire iframe.
+- **Quiklie** — High-risk-friendly card processor with Hosted Payment Page (HPP). PCI SAQ-A. Full-page redirect (no iframe — explicit Pay button after auto-fire mint).
 
-A single env var (`NEXT_PUBLIC_PRIMARY_CARD_RAIL=cardsshield|psifi`) picks which one renders. Both stay wired in the codebase 24/7. Flipping is one env change + redeploy.
+A single env var (`NEXT_PUBLIC_PRIMARY_CARD_RAIL=cardsshield|psifi|quiklie`) picks which one renders. All three stay wired in the codebase 24/7. Flipping is one env change + redeploy.
 
-The customer-facing UX is the same for both rails: a single combined form, an inline iframe that auto-loads the moment shipping is valid, debounced re-mints on coupon/cart changes, no "Pay" button.
+The customer-facing UX is consistent across rails: a single combined form, debounced auto-fire mint on stable form input, no manual "submit shipping" step. The two iframe rails additionally skip the Pay button (iframe loads directly); the Quiklie HPP rail renders an explicit "Pay $X.XX" button that redirects to the hosted page.
 
 ## File map
 
@@ -71,6 +72,7 @@ Copy `.env.example` to `.env.local` and fill in:
 - **Always set:** `NEXT_PUBLIC_PRIMARY_CARD_RAIL` (`cardsshield` or `psifi`), `NEXT_PUBLIC_SITE_URL`.
 - **If using PsiFi:** `PSIFI_API_KEY`, `PSIFI_WEBHOOK_SECRET`.
 - **If using CardsShield:** `CS_GATEWAY_URL`, `CS_API_KEY`, `CS_PLATFORM_NAME`, `CS_ENDPOINT_TOKEN`, `CS_PAYMENT_GATEWAY`.
+- **If using Quiklie:** `QUIKLIE_API_KEY`, `QUIKLIE_MERCHANT_ID`, `QUIKLIE_DESCRIPTOR` (≤22 chars), optional `NEXT_PUBLIC_QUIKLIE_HPP_MIDTYPE=THREE_D` if Quiklie support tells you your account uses the 3DS lane (default `TWO_D`).
 
 The build will FAIL with a clear error if `NEXT_PUBLIC_PRIMARY_CARD_RAIL` is missing or invalid. That's intentional.
 
@@ -93,8 +95,8 @@ When the human asks you to drop this into an existing Next.js site, do these in 
 3. Merge `.env.example` env vars into the host's existing `.env.example`. Set the active rail's env vars in the host's deployment provider (Vercel / Netlify / Railway / etc.).
 4. Replace `src/lib/catalog.ts` and `src/lib/order-store.ts` with adapters to the host's catalog + DB.
 5. Wire the host's checkout page (`/checkout` or `/cart` or wherever) to use the auto-fire pattern from `src/app/page.tsx`. Specifically, copy the `RailSession` union, the `fingerprint` useMemo, the auto-fire `useEffect`, and the `iframeStatus` state machine. The form fields + summary card are the host's own UI.
-6. Wire fulfillment side effects in `src/app/api/psifi/notify/route.ts` and `src/app/api/cs/notify/route.ts` (look for `CUSTOMIZE:`).
-7. Configure webhook URLs in the gateway portals to point at `<host>/api/psifi/notify` and `<host>/api/cs/notify`.
+6. Wire fulfillment side effects in `src/app/api/psifi/notify/route.ts`, `src/app/api/cs/notify/route.ts`, and `src/app/api/quiklie/notify/route.ts` (look for `CUSTOMIZE:`).
+7. Configure webhook URLs in the gateway portals to point at `<host>/api/psifi/notify`, `<host>/api/cs/notify`, and `<host>/api/quiklie/notify` respectively.
 8. Test by minting a real $1 order on each rail. Flip the env var, redeploy, test the other rail. Both should work.
 
 ## Anti-patterns (don't do these)

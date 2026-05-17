@@ -23,9 +23,13 @@
 export interface StoredOrder {
   orderNumber: string;
   /** The active rail for this order — set at mint time. */
-  rail: "cardsshield" | "psifi";
+  rail: "cardsshield" | "psifi" | "quiklie";
   /** PsiFi session id (psifi rail only). */
   psifiSessionId?: string;
+  /** Quiklie payment id / qkpaymentId (quiklie rail only). The webhook
+   *  handler at /api/quiklie/notify uses this to correlate inbound
+   *  events back to the local order. */
+  quikliePaymentId?: string;
   /** Customer snapshot at mint time. */
   customer: {
     firstName: string;
@@ -83,6 +87,14 @@ class InMemoryOrderStore {
   findByPsifiSessionId(sessionId: string): StoredOrder | null {
     for (const order of this.store.values()) {
       if (order.psifiSessionId === sessionId) return order;
+    }
+    return null;
+  }
+
+  /** Look up by Quiklie payment id / qkpaymentId (for webhook handlers). */
+  findByQuikliePaymentId(qkpaymentId: string): StoredOrder | null {
+    for (const order of this.store.values()) {
+      if (order.quikliePaymentId === qkpaymentId) return order;
     }
     return null;
   }

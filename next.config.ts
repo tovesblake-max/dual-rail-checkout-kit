@@ -16,6 +16,12 @@ import type { NextConfig } from "next";
  *                              one rail; KingsGate's brand surfaces have
  *                              multiplied over time)
  *   - *.paypal.com           — PayPal SDK loaded inside the KingsGate iframe
+ *   - *.quiklie.com          — Quiklie HPP redirect target + gateway API.
+ *                              Included in frame-src too in case Quiklie
+ *                              enables iframe-embedding in the future
+ *                              (currently we full-page redirect because
+ *                              their HPP's X-Frame-Options behavior is
+ *                              untested).
  */
 const nextConfig: NextConfig = {
   async headers() {
@@ -34,8 +40,8 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data:",
               "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://*.psifi.app https://*.cardsshield.com https://*.thekingsgateway.com https://*.paymentshields.com https://*.keysidecommerce.com",
-              "frame-src 'self' https://*.psifi.app https://*.cardsshield.com https://*.thekingsgateway.com https://*.paymentshields.com https://*.keysidecommerce.com https://*.paypal.com",
+              "connect-src 'self' https://*.psifi.app https://*.cardsshield.com https://*.thekingsgateway.com https://*.paymentshields.com https://*.keysidecommerce.com https://*.quiklie.com",
+              "frame-src 'self' https://*.psifi.app https://*.cardsshield.com https://*.thekingsgateway.com https://*.paymentshields.com https://*.keysidecommerce.com https://*.paypal.com https://*.quiklie.com",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

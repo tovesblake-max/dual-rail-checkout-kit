@@ -59,9 +59,12 @@ interface CustomerInfo {
 }
 
 /**
- * Discriminated union covering both rails' session shapes. PsiFi
- * returns a session id + hosted URL; CardsShield returns an HTML
- * blob that has to be injected + script-rehydrated client-side.
+ * Discriminated union covering all three rails' session shapes:
+ *   - psifi:        returns a session id + hosted URL → inline iframe
+ *   - cardsshield:  returns an HTML blob that has to be injected +
+ *                   script-rehydrated client-side → inline iframe
+ *   - quiklie:      returns a hosted URL → full-page redirect (HPP
+ *                   doesn't embed reliably; explicit Pay button)
  */
 type RailSession =
   | {
@@ -74,6 +77,12 @@ type RailSession =
   | {
       rail: "cardsshield";
       paymentFormHtml: string;
+      orderNumber: string;
+      fingerprint: string;
+    }
+  | {
+      rail: "quiklie";
+      url: string;
       orderNumber: string;
       fingerprint: string;
     };
@@ -240,6 +249,41 @@ export default function DemoCheckoutPage() {
               rail: "psifi",
               url: data.url,
               sessionId: data.sessionId,
+              orderNumber: data.orderNumber,
+              fingerprint,
+            });
+            return;
+          }
+          setMintError("Unexpected response from payment gateway.");
+          setSession(null);
+        } else if (CARD_RAIL === "quiklie") {
+          const res = await fetch("/api/checkout/express-quiklie-hpp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              items: itemsToSend,
+              customer,
+              shippingAddress: address,
+              couponCode: appliedCoupon?.code || undefined,
+              idempotencyKey: key,
+            }),
+            signal: ac.signal,
+          });
+          const data = await res.json();
+          if (cancelled || ac.signal.aborted) return;
+
+          if (!res.ok) {
+            setMintError(
+              data?.error || "Couldn't load secure checkout. Please try again.",
+            );
+            setSession(null);
+            return;
+          }
+          if (data?.status === "redirect" && data.url && data.orderNumber) {
+            previousSessionIdRef.current = data.sessionId || data.orderNumber;
+            setSession({
+              rail: "quiklie",
+              url: data.url,
               orderNumber: data.orderNumber,
               fingerprint,
             });
@@ -612,6 +656,30 @@ export default function DemoCheckoutPage() {
                     );
                   }}
                 />
+              )}
+
+              {iframeStatus === "ready" && session?.rail === "quiklie" && (
+                <div className="bg-accent border border-border rounded-lg p-6">
+                  <p className="text-sm text-foreground font-medium mb-1">
+                    Ready to pay {fmt(total)}
+                  </p>
+                  <p className="text-xs text-muted mb-4">
+                    You&apos;ll be redirected to Quiklie&apos;s secure payment page to enter your card details. You&apos;ll return here once payment completes.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = session.url;
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-light transition-colors"
+                  >
+                    <Lock className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
+                    Pay {fmt(total)} &rarr;
+                  </button>
+                  <p className="text-[10px] text-muted mt-2 text-center font-mono">
+                    Ref {session.orderNumber}
+                  </p>
+                </div>
               )}
 
               <p className="text-[11px] text-muted mt-3 inline-flex items-center gap-1.5">

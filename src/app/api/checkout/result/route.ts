@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCheckoutSession } from "@/lib/psifi";
 import { getPaymentStatus } from "@/lib/cardsshield";
+import { getTransactionStatus, QUIKLIE_STATUS } from "@/lib/quiklie";
 import { orderStore } from "@/lib/order-store";
 
 /**
@@ -97,6 +98,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ status: "completed" });
     }
     if (res.status === "fail") {
+      orderStore.patch(order.orderNumber, { status: "failed" });
+      return NextResponse.json({ status: "failed" });
+    }
+    return NextResponse.json({ status: "pending" });
+  }
+
+  if (order.rail === "quiklie" && order.quikliePaymentId) {
+    const res = await getTransactionStatus(order.quikliePaymentId);
+    if (!res.ok || !res.data) {
+      return NextResponse.json({ status: "pending" });
+    }
+    const code = Number(res.data.statusCode);
+    if (code === QUIKLIE_STATUS.SUCCESS) {
+      orderStore.patch(order.orderNumber, { status: "paid" });
+      return NextResponse.json({ status: "completed" });
+    }
+    if (code === QUIKLIE_STATUS.FAILED || code === QUIKLIE_STATUS.DECLINED) {
       orderStore.patch(order.orderNumber, { status: "failed" });
       return NextResponse.json({ status: "failed" });
     }
