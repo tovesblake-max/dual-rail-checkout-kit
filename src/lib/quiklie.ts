@@ -18,17 +18,25 @@ const QUIKLIE_BASE = (process.env.QUIKLIE_API_BASE || "https://api.quiklie.com")
 const QUIKLIE_API_KEY = (process.env.QUIKLIE_API_KEY || "").trim();
 const QUIKLIE_MERCHANT_ID = (process.env.QUIKLIE_MERCHANT_ID || "").trim();
 
-// Quiklie's status codes per their V2 spec. Returned as a string in the
-// response envelope but always numeric per spec.
+// Quiklie's status codes per their V2 spec. Returned as a string in
+// the response envelope; always numeric per spec.
+//
+// Note: code 5 ("ERROR") is the most common failure value and its
+// meaning depends on the `message` field:
+//   "No eligible payment processors available" → your account isn't
+//      provisioned for the requested flow (e.g. HPP not enabled).
+//   "No eligible MIDs available for the requested transaction" → flow
+//      is provisioned but midType (TWO_D / THREE_D) doesn't match
+//      your account's lane.
+// See `scripts/probe-quiklie-hpp-embed.mjs` for diagnostics.
 export const QUIKLIE_STATUS = {
   SUCCESS: 1,
   THREE_DS_REQUIRED: 2, // HPP path always returns 2 with a redirect URL
-  PENDING: 3,
-  OTP_REQUIRED: 4,
-  FAILED: 5,
-  DECLINED: 6,
-  REFUNDED: 6, // separate context — refund response uses code 6
-  REFUND_FAILED: 7,
+  OTP_REQUIRED: 3,
+  DECLINED: 4,
+  ERROR: 5, // routing failure — see message for sub-reason
+  REFUNDED: 6, // refund-response context only
+  REFUND_FAILED: 7, // refund-response context only
 } as const;
 
 export interface QuiklieBilling {
@@ -215,4 +223,64 @@ export function verifyWebhookApiKey(provided: string | null): boolean {
     result |= provided.charCodeAt(i) ^ expected.charCodeAt(i);
   }
   return result === 0;
+}
+
+// ── Refund ─────────────────────────────────────────────────────────
+
+export interface QuiklieRefundResponse {
+  status: string;
+  statusCode: string;
+  message?: string;
+  transactionId?: string;
+  qkpaymentId?: string;
+  refundId?: string;
+  amount?: number;
+  currency?: string;
+}
+
+/**
+ * Issue a refund (full or partial) against a Quiklie transaction.
+ *
+ * Endpoint: `POST /api/v1/refund` per Quiklie V2 spec.
+ *
+ * The Quiklie merchant DASHBOARD does not expose a refund button as
+ * of 2026-05-17 — this API endpoint is the only way to refund
+ * programmatically. Build an admin route (e.g. `/api/admin/orders/refund`)
+ * that calls this helper, gated behind your admin auth.
+ *
+ * Quiklie returns the standard `status` / `statusCode` envelope:
+ *   - statusCode 6 = REFUNDED (success)
+ *   - statusCode 7 = REFUND_FAILED (gateway accepted the request,
+ *                    but the issuing bank rejected — surface as a
+ *                    refund failure to the operator)
+ *
+ * Partial refunds: pass `amountDollars` less than the original
+ * capture. Cumulative refunded amount cannot exceed the capture;
+ * mirror this check on your side too.
+ *
+ * @param transactionId — Quiklie's qkpaymentId from the original mint
+ *                        (stored as `quikliePaymentId` on the order
+ *                        in this kit's order store).
+ * @param amountDollars — amount to refund in dollars (e.g. 15.00).
+ * @param reason        — optional, capped at 500 chars by Quiklie.
+ */
+export async function processRefund(params: {
+  transactionId: string;
+  amountDollars: number;
+  currencyCode?: string;
+  reason?: string;
+}) {
+  const body: Record<string, unknown> = {
+    transactionId: params.transactionId,
+    amount: roundAmount(params.amountDollars),
+    currencyCode: (params.currencyCode || "USD").toUpperCase(),
+  };
+  if (params.reason && params.reason.trim().length > 0) {
+    body.reason = params.reason.trim().slice(0, 500);
+  }
+  return quiklieRequest<QuiklieRefundResponse>(
+    "/api/v1/refund",
+    "POST",
+    body,
+  );
 }

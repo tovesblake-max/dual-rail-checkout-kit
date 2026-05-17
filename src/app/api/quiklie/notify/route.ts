@@ -91,8 +91,8 @@ export async function POST(request: Request) {
         console.log(`[quiklie-notify] order ${order.orderNumber} marked paid`);
         // TODO (production): send receipt email, fulfillment push, pixels.
       } else if (
-        rawStatusCode === QUIKLIE_STATUS.FAILED ||
-        rawStatusCode === QUIKLIE_STATUS.DECLINED
+        rawStatusCode === QUIKLIE_STATUS.DECLINED ||
+        rawStatusCode === QUIKLIE_STATUS.ERROR
       ) {
         orderStore.patch(order.orderNumber, { status: "failed" });
       }

@@ -123,3 +123,28 @@ When the human asks you to drop this into an existing Next.js site, do these in 
 - `docs/customization.md` — every `CUSTOMIZE:` hook point in detail
 
 If anything in this AGENTS.md conflicts with `docs/`, the docs are authoritative — they're the longer form.
+
+## Dev tools
+
+- **`scripts/probe-quiklie-hpp-embed.mjs`** — mints a $0.50 test Quiklie HPP session and inspects X-Frame-Options + CSP `frame-ancestors` to decide whether the merchant's HPP can be iframed. Also disambiguates Quiklie's `statusCode: 5` (HPP-not-provisioned vs midType-mismatch). Run with `node ./scripts/probe-quiklie-hpp-embed.mjs` from project root, after populating `QUIKLIE_API_KEY` + `QUIKLIE_MERCHANT_ID`.
+
+## Refund
+
+The `processRefund` helper in `src/lib/quiklie.ts` is the only programmatic way to refund a Quiklie transaction — the Quiklie merchant dashboard does NOT expose a refund button as of 2026-05-17. Wrap it in an admin-gated route (e.g. `/api/admin/orders/refund`) and dispatch by gateway:
+
+```ts
+if (order.rail === "quiklie") {
+  await processRefund({ transactionId: order.quikliePaymentId, amountDollars, reason });
+}
+```
+
+Refund helpers for KingsGate (API 10.1) and PsiFi are NOT shipped — see `docs/troubleshooting.md` for the API references.
+
+## Troubleshooting
+
+Common failure modes + diagnoses: `docs/troubleshooting.md`. Most user-reported "checkout is broken" reports map to one of:
+- Quiklie `statusCode: 5` (account not HPP-provisioned, OR midType lane mismatch)
+- CSP blocking iframe load
+- PsiFi 30-min session expiry
+- KingsGate iframe origin rotation (new CDN subdomain not in allowlist)
+- Customer cleared cookies mid-flow / Safari ITP cookie partition

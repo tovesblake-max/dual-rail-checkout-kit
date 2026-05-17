@@ -114,7 +114,7 @@ export async function POST(request: Request) {
       orderStore.patch(order.orderNumber, { status: "paid" });
       return NextResponse.json({ status: "completed" });
     }
-    if (code === QUIKLIE_STATUS.FAILED || code === QUIKLIE_STATUS.DECLINED) {
+    if (code === QUIKLIE_STATUS.DECLINED || code === QUIKLIE_STATUS.ERROR) {
       orderStore.patch(order.orderNumber, { status: "failed" });
       return NextResponse.json({ status: "failed" });
     }

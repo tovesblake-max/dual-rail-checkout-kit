@@ -120,13 +120,16 @@ dual-rail-checkout-kit/
 ├── INTEGRATION.md                # step-by-step drop-in guide for humans
 ├── LICENSE
 ├── .env.example                  # heavily commented env template
-├── next.config.ts                # CSP allowlists for both rails (REQUIRED)
+├── next.config.ts                # CSP allowlists for all three rails (REQUIRED)
 ├── package.json
 ├── tsconfig.json
 ├── docs/
 │   ├── architecture.md           # deep technical reference
 │   ├── payment-rail-switch.md    # the flip runbook
-│   └── customization.md          # every CUSTOMIZE: hook explained
+│   ├── customization.md          # every CUSTOMIZE: hook explained
+│   └── troubleshooting.md        # statusCode 5, iframe-block, ITP, refunds
+├── scripts/
+│   └── probe-quiklie-hpp-embed.mjs  # dev tool: can Quiklie HPP be iframed?
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx              # demo checkout (replace with your own)
@@ -134,20 +137,23 @@ dual-rail-checkout-kit/
 │   │   ├── embedded-bridge/      # PsiFi → parent handoff
 │   │   └── api/
 │   │       ├── checkout/
-│   │       │   ├── express/      # CardsShield mint
-│   │       │   ├── express-psifi/ # PsiFi mint
-│   │       │   └── result/       # rail-agnostic polling
-│   │       ├── psifi/notify/     # PsiFi webhook
+│   │       │   ├── express/             # CardsShield mint
+│   │       │   ├── express-psifi/       # PsiFi mint
+│   │       │   ├── express-quiklie-hpp/ # Quiklie mint
+│   │       │   └── result/              # rail-agnostic polling
+│   │       ├── psifi/notify/      # PsiFi webhook
+│   │       ├── quiklie/notify/    # Quiklie webhook
 │   │       └── cs/
-│   │           ├── notify/       # KingsGate webhook
-│   │           └── order-detail/ # KingsGate API 0 callback
+│   │           ├── notify/        # KingsGate webhook
+│   │           └── order-detail/  # KingsGate API 0 callback
 │   ├── components/
 │   │   ├── PsifiEmbeddedFrame.tsx
 │   │   └── CardsShieldEmbeddedFrame.tsx
 │   └── lib/
-│       ├── checkout-config.ts    # the env switch + validator
-│       ├── psifi.ts              # PsiFi gateway client
-│       ├── cardsshield.ts        # KingsGate gateway client
+│       ├── checkout-config.ts    # the env switch + validator (3 rails)
+│       ├── psifi.ts              # PsiFi gateway client + webhook verify
+│       ├── cardsshield.ts        # KingsGate gateway client + API 0 helper
+│       ├── quiklie.ts            # Quiklie HPP client + refund + webhook verify
 │       ├── catalog.ts            # demo catalog (replace)
 │       └── order-store.ts        # in-memory store (replace with DB)
 ```
@@ -156,24 +162,44 @@ dual-rail-checkout-kit/
 
 ## Customization hook points
 
-Every place you need to plug your own data layer in is marked with a literal `// CUSTOMIZE:` comment in the source. As of v1.0 there are five:
+Every place you need to plug your own data layer in is marked with a literal `// CUSTOMIZE:` comment in the source. As of v1.1 there are six:
 
 1. **`src/lib/catalog.ts`** — replace demo product + coupon with your catalog lookups.
 2. **`src/lib/order-store.ts`** — replace in-memory `Map` with your DB.
 3. **`src/app/page.tsx`** — replace the demo page with your real checkout UI (keep the auto-fire pattern).
 4. **`src/app/api/psifi/notify/route.ts`** `after()` block — wire in your fulfillment.
 5. **`src/app/api/cs/notify/route.ts`** `after()` block — same.
+6. **`src/app/api/quiklie/notify/route.ts`** `after()` block — same.
 
 Full details in [docs/customization.md](./docs/customization.md).
+
+---
+
+## Dev tools
+
+**Probe whether Quiklie HPP can be iframed on your account:**
+
+```bash
+node ./scripts/probe-quiklie-hpp-embed.mjs
+```
+
+Mints a $0.50 test session, inspects `X-Frame-Options` + CSP `frame-ancestors` headers on the hosted page URL, reports a verdict. Useful for deciding whether to upgrade Quiklie from the default Pay-button-redirect UX to a true embedded iframe.
+
+The probe also disambiguates Quiklie's confusing `statusCode: 5` failure — distinguishes "HPP not provisioned on your account" from "wrong midType lane."
+
+---
+
+## Troubleshooting
+
+Common symptoms with diagnoses: [docs/troubleshooting.md](./docs/troubleshooting.md). Covers `statusCode 5`, iframe-block CSP errors, Safari ITP, KingsGate origin rotations, PsiFi session expiry, Quiklie refund via API (since the dashboard hides the button), and more.
 
 ---
 
 ## What this kit does NOT do
 
 - **Subscription billing.** One-shot checkout only.
-- **Refunds.** The kit ships gateway clients for refund APIs (KingsGate API 10.1) but doesn't expose them. Bolt them on if needed.
 - **Fraud screening.** No 3DS challenge handling, velocity checks, or vendor fraud APIs. Each gateway has its own; wire to them separately.
-- **Multi-currency.** USD only. Both rails support more — the kit just doesn't bother.
+- **Multi-currency.** USD only. All three rails support more — the kit just doesn't bother.
 - **Account creation / login.** Guest checkout flow. If you need auth, layer it on the host site separately.
 - **Cart persistence across devices.** No CartProvider, no session storage. The demo holds cart state in component state.
 
