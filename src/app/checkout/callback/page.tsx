@@ -6,7 +6,7 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 /**
  * Post-purchase landing page (rail-agnostic).
  *
- * The iframe component (or, in CardsShield's case, KingsGate's
+ * The iframe component (or, in CardsShield's case, CardsShield's
  * top-level redirect) navigates the parent here once payment
  * completes. This is where production code:
  *   - Renders the order receipt

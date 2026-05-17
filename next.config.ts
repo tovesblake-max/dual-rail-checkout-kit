@@ -8,14 +8,14 @@ import type { NextConfig } from "next";
  *
  * What each domain is for:
  *   - *.psifi.app            — PsiFi hosted checkout iframe + API egress
- *   - *.cardsshield.com      — Legacy KingsGate domain (still serves some assets)
- *   - *.thekingsgateway.com  — KingsGate docs + portal
- *   - *.paymentshields.com   — KingsGate gateway API egress
- *   - *.keysidecommerce.com  — Where the live KingsGate iframe body content
+ *   - *.cardsshield.com      — Legacy CardsShield domain (still serves some assets)
+ *   - *.thekingsgateway.com  — CardsShield docs + portal
+ *   - *.paymentshields.com   — CardsShield gateway API egress
+ *   - *.keysidecommerce.com  — Where the live CardsShield iframe body content
  *                              actually loads from (yes, four domains for
- *                              one rail; KingsGate's brand surfaces have
+ *                              one rail; CardsShield's brand surfaces have
  *                              multiplied over time)
- *   - *.paypal.com           — PayPal SDK loaded inside the KingsGate iframe
+ *   - *.paypal.com           — PayPal SDK loaded inside the CardsShield iframe
  *   - *.quiklie.com          — Quiklie HPP redirect target + gateway API.
  *                              Included in frame-src too in case Quiklie
  *                              enables iframe-embedding in the future

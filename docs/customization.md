@@ -94,7 +94,7 @@ export const orderStore = {
 
 export function generateOrderNumber(): string {
   // Your own ID scheme. Must be unique across all orders and short
-  // enough to fit in KingsGate's order_id field (typically 32 chars).
+  // enough to fit in CardsShield's order_id field (typically 32 chars).
 }
 ```
 
@@ -145,7 +145,7 @@ export const orderStore = {
 - The hardcoded `DEMO_ITEM` — pull from your real cart state (CartProvider, Redux, Zustand, server-fetched, whatever).
 - The form fields and summary card — your design system.
 - The coupon UI — connect to your coupon validation endpoint (which calls `findCoupon` server-side).
-- The page header copy ("Dual-rail checkout demo") — your branding.
+- The page header copy ("Tri-rail checkout demo") — your branding.
 
 ### Pattern variations
 
@@ -206,15 +206,15 @@ if (order.referralAffiliateId) {
 
 Note the "Idempotent state flip" pattern. PsiFi (Svix) will retry webhooks for up to 24h on non-2xx responses. If you process a webhook successfully but the 200 ACK is dropped due to network issues, Svix will redeliver. The atomic conditional UPDATE prevents double-firing side effects.
 
-## 5. `src/app/api/cs/notify/route.ts` — KingsGate fulfillment side effects
+## 5. `src/app/api/cs/notify/route.ts` — CardsShield fulfillment side effects
 
-**What it is:** the webhook receiver for KingsGate events.
+**What it is:** the webhook receiver for CardsShield events.
 
 **What it ships:** API 3.2 status verification + `after()` block that flips the local order-store status.
 
 **What you replace it with:** same as PsiFi above — receipt email, fulfillment push, pixels, etc.
 
-### One KingsGate-specific must-do
+### One CardsShield-specific must-do
 
 Save `status.shield_domain` to your order row. It's per-order and REQUIRED downstream for:
 

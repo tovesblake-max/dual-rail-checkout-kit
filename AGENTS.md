@@ -6,7 +6,7 @@ You're an AI integrating this kit into an existing Next.js site. Read this file 
 
 A drop-in checkout module for Next.js 15 (App Router) + React 19. Three payment gateways are wired in parallel:
 
-- **CardsShield / KingsGate** — PayPal-backed, weekly bank settlement, near-zero chargebacks. PCI SAQ-A. Inline auto-fire iframe.
+- **CardsShield / CardsShield** — PayPal-backed, weekly bank settlement, near-zero chargebacks. PCI SAQ-A. Inline auto-fire iframe.
 - **PsiFi** — Crypto-settled, daily payouts, no KYC, unified Apple Pay / Google Pay / card / crypto. PCI SAQ-A. Inline auto-fire iframe.
 - **Quiklie** — High-risk-friendly card processor with Hosted Payment Page (HPP). PCI SAQ-A. Full-page redirect (no iframe — explicit Pay button after auto-fire mint).
 
@@ -32,15 +32,15 @@ src/
 │       │   └── result/route.ts             ← Rail-agnostic polling. KEEP.
 │       ├── psifi/notify/route.ts           ← PsiFi webhook receiver. KEEP.
 │       └── cs/
-│           ├── notify/route.ts             ← KingsGate webhook receiver. KEEP.
-│           └── order-detail/route.ts       ← KingsGate API 0 callback. KEEP.
+│           ├── notify/route.ts             ← CardsShield webhook receiver. KEEP.
+│           └── order-detail/route.ts       ← CardsShield API 0 callback. KEEP.
 ├── components/
 │   ├── PsifiEmbeddedFrame.tsx              ← PsiFi iframe + 3-channel completion. DO NOT MODIFY.
-│   └── CardsShieldEmbeddedFrame.tsx        ← KingsGate iframe + postMessage choreography. DO NOT MODIFY.
+│   └── CardsShieldEmbeddedFrame.tsx        ← CardsShield iframe + postMessage choreography. DO NOT MODIFY.
 └── lib/
     ├── checkout-config.ts                  ← The switch. DO NOT MODIFY.
     ├── psifi.ts                            ← PsiFi gateway client. DO NOT MODIFY.
-    ├── cardsshield.ts                      ← KingsGate gateway client. DO NOT MODIFY.
+    ├── cardsshield.ts                      ← CardsShield gateway client. DO NOT MODIFY.
     ├── catalog.ts                          ← REPLACE with the host's catalog adapter.
     └── order-store.ts                      ← REPLACE with the host's DB adapter.
 ```
@@ -57,13 +57,13 @@ Search the codebase for the literal token `CUSTOMIZE:` — every place you need 
 
 4. **`src/app/api/psifi/notify/route.ts`** (inside the `after()` block) — wire in the host's fulfillment side effects: send receipt email, push to ShipStation, fire conversion pixels, etc. The kit only flips the local order-store status.
 
-5. **`src/app/api/cs/notify/route.ts`** (inside the `after()` block) — same pattern: wire in the host's fulfillment side effects. Also save `status.shield_domain` to your order row — it's required for KingsGate's refund + tracking-sync APIs later.
+5. **`src/app/api/cs/notify/route.ts`** (inside the `after()` block) — same pattern: wire in the host's fulfillment side effects. Also save `status.shield_domain` to your order row — it's required for CardsShield's refund + tracking-sync APIs later.
 
 ## What to NOT MODIFY
 
 - **`src/lib/checkout-config.ts`** — the env validator throws on invalid values. Don't add silent fallbacks; they hide outages.
 - **`src/lib/psifi.ts`** and **`src/lib/cardsshield.ts`** — the gateway protocol contracts. Field names, header names, signature schemes all match the gateways' specs exactly. Modifying breaks the integration silently.
-- **`src/components/PsifiEmbeddedFrame.tsx`** and **`src/components/CardsShieldEmbeddedFrame.tsx`** — the iframe components. The 3-channel completion detection (PsiFi) and postMessage choreography (KingsGate) is load-bearing. The chrome (header strip, footer caption, loading shimmer) is styled with Tailwind tokens that you CAN re-theme by adjusting the tokens in `globals.css`, but don't touch the iframe element itself.
+- **`src/components/PsifiEmbeddedFrame.tsx`** and **`src/components/CardsShieldEmbeddedFrame.tsx`** — the iframe components. The 3-channel completion detection (PsiFi) and postMessage choreography (CardsShield) is load-bearing. The chrome (header strip, footer caption, loading shimmer) is styled with Tailwind tokens that you CAN re-theme by adjusting the tokens in `globals.css`, but don't touch the iframe element itself.
 
 ## Environment setup
 
@@ -82,7 +82,7 @@ The build will FAIL with a clear error if `NEXT_PUBLIC_PRIMARY_CARD_RAIL` is mis
 
 - `*.psifi.app`
 - `*.cardsshield.com`, `*.thekingsgateway.com`, `*.paymentshields.com`, `*.keysidecommerce.com`
-- `*.paypal.com` (loaded inside the KingsGate iframe)
+- `*.paypal.com` (loaded inside the CardsShield iframe)
 
 If you're MERGING this kit into a host with its own CSP, append these directives — don't replace the host's wholesale. Without them, the browser silently blocks the iframe and the checkout dies.
 
@@ -105,7 +105,7 @@ When the human asks you to drop this into an existing Next.js site, do these in 
 - **Don't read `process.env.NEXT_PUBLIC_PRIMARY_CARD_RAIL` directly.** Always import `CARD_RAIL` from `@/lib/checkout-config` so the validator runs.
 - **Don't trust client-supplied prices.** The mint routes recompute totals from your catalog table server-side. The `priceCents` field in the request body is for display fingerprinting only.
 - **Don't disable webhook signature verification "temporarily for debugging".** Forged webhooks trigger fulfillment. Fail closed is the right default.
-- **Don't store the gateway response HTML/URL on the client and reuse it.** Each session has a TTL (PsiFi: 1800s, KingsGate: per-merchant) and re-using stale ones causes silent failures. The auto-fire pattern handles re-minting; trust it.
+- **Don't store the gateway response HTML/URL on the client and reuse it.** Each session has a TTL (PsiFi: 1800s, CardsShield: per-merchant) and re-using stale ones causes silent failures. The auto-fire pattern handles re-minting; trust it.
 
 ## When to ask the human
 
@@ -138,7 +138,7 @@ if (order.rail === "quiklie") {
 }
 ```
 
-Refund helpers for KingsGate (API 10.1) and PsiFi are NOT shipped — see `docs/troubleshooting.md` for the API references.
+Refund helpers for CardsShield (API 10.1) and PsiFi are NOT shipped — see `docs/troubleshooting.md` for the API references.
 
 ## Troubleshooting
 
@@ -146,5 +146,5 @@ Common failure modes + diagnoses: `docs/troubleshooting.md`. Most user-reported 
 - Quiklie `statusCode: 5` (account not HPP-provisioned, OR midType lane mismatch)
 - CSP blocking iframe load
 - PsiFi 30-min session expiry
-- KingsGate iframe origin rotation (new CDN subdomain not in allowlist)
+- CardsShield iframe origin rotation (new CDN subdomain not in allowlist)
 - Customer cleared cookies mid-flow / Safari ITP cookie partition

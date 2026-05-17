@@ -4,7 +4,7 @@ You're Claude Code (or a Claude-based agent) integrating this kit. Read [AGENTS.
 
 ## TL;DR
 
-This is a Next.js 15 drop-in module for payment checkout with two hot-swappable gateways (CardsShield/KingsGate + PsiFi). One env var (`NEXT_PUBLIC_PRIMARY_CARD_RAIL`) picks which one renders. Both stay wired 24/7 for outage failover.
+This is a Next.js 15 drop-in module for payment checkout with two hot-swappable gateways (CardsShield/CardsShield + PsiFi). One env var (`NEXT_PUBLIC_PRIMARY_CARD_RAIL`) picks which one renders. Both stay wired 24/7 for outage failover.
 
 ## Quick orientation
 

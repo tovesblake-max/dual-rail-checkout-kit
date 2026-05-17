@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Lock } from "lucide-react";
 
 /**
- * Inline CardsShield / KingsGate PayPal iframe — no modal chrome.
+ * Inline CardsShield / CardsShield PayPal iframe — no modal chrome.
  *
  * Mirrors `PsifiEmbeddedFrame`'s UX / API contract (loading shimmer,
  * responsive height cap, key-forced remount on new session) but
- * adapted for KingsGate's protocol:
+ * adapted for CardsShield's protocol:
  *
  *   1. Server returns an HTML blob (form + scripts) rather than a
  *      URL. We `dangerouslySetInnerHTML` it into a host div.
@@ -20,43 +20,43 @@ import { Loader2, Lock } from "lucide-react";
  *
  *   3. Heartbeat: every 100ms we send `cs-platformValidationStatus`
  *      (+ the `mecom-paypal*` analog the live iframe actually uses)
- *      to the KingsGate iframe so it knows our shipping form is
+ *      to the CardsShield iframe so it knows our shipping form is
  *      valid. We only mount this component AFTER server-side
  *      address validation has passed, so the value is always `true`.
  *
  *   4. Listener: when the customer clicks the PayPal button inside
- *      the iframe, KingsGate posts `cs-feedbackPlatformValidationStatus`
+ *      the iframe, CardsShield posts `cs-feedbackPlatformValidationStatus`
  *      (or the `mecom-paypal*` analog). We respond with
  *      `cs-platformOrderInfo` containing the shipping payload in
- *      KingsGate's exact field shape (per Integration Guide v2.4).
+ *      CardsShield's exact field shape (per Integration Guide v2.4).
  *
  *   5. Resize handler: the iframe posts `mecom-paypalBodyResizeContainer`
  *      when its internal SDK grows / shrinks (3DS panels, etc.). We
  *      apply the requested height, clamped to 192px minimum so the
  *      PayPal button row never clips.
  *
- *   6. Completion: KingsGate redirects the PARENT WINDOW (not the
+ *   6. Completion: CardsShield redirects the PARENT WINDOW (not the
  *      iframe) to /checkout/callback?order_number=… after payment.
  *      No iframe-internal completion postMessage to listen for. The
  *      browser just navigates away.
  *
  *   7. Boot timeout: if 15s pass with no postMessage from any
  *      CardsShield origin, we surface a "payment unavailable" error.
- *      Catches the case where KingsGate's CDN drops the script bundle.
+ *      Catches the case where CardsShield's CDN drops the script bundle.
  *
  * Origin whitelist for inbound postMessages: cardsshield.com,
  * thekingsgateway.com, paymentshields.com, keysidecommerce.com.
- * KingsGate's brand surfaces have multiplied; the live iframe
+ * CardsShield's brand surfaces have multiplied; the live iframe
  * actually loads its body content from keysidecommerce.com while
  * gateway egresses from paymentshields.com.
  */
 
-// Element ID KingsGate's hosted iframe uses (per Integration Guide
+// Element ID CardsShield's hosted iframe uses (per Integration Guide
 // v2.4 § "Embed Container"). Hardcoded because changing it requires
-// a KingsGate-side rebuild — same ID is in the gated CheckoutClient.
+// a CardsShield-side rebuild — same ID is in the gated CheckoutClient.
 const CS_IFRAME_ID = "mecom_paypal_payment_form";
 
-// 192px is KingsGate's documented minimum for the PayPal button row.
+// 192px is CardsShield's documented minimum for the PayPal button row.
 // Anything smaller clips the button.
 const MIN_IFRAME_HEIGHT = 192;
 const MAX_IFRAME_HEIGHT = 720;
@@ -68,7 +68,7 @@ export interface CardsShieldEmbeddedFrameProps {
   /** SWB order number — surfaced as "Ref" caption below the iframe. */
   orderNumber: string;
   /** Customer info required for the `cs-platformOrderInfo` response.
-   *  KingsGate's field shape is exact (per Integration Guide v2.4
+   *  CardsShield's field shape is exact (per Integration Guide v2.4
    *  § JS Logic Step 2.2). */
   customer: {
     firstName: string;
@@ -182,7 +182,7 @@ function CardsShieldEmbeddedFrameInner({
       const d = event.data;
       const origin = event.origin || "?";
 
-      // Origin substring whitelist. KingsGate's brand surfaces have
+      // Origin substring whitelist. CardsShield's brand surfaces have
       // multiplied — production iframe content actually loads from
       // keysidecommerce.com, gateway API egresses from
       // paymentshields.com, legacy domain is cardsshield.com, docs/
@@ -321,10 +321,10 @@ function CardsShieldEmbeddedFrameInner({
           className={`transition-opacity duration-200 ${
             iframeReady ? "opacity-100" : "opacity-0"
           }`}
-          // dangerouslySetInnerHTML is unavoidable here — KingsGate
+          // dangerouslySetInnerHTML is unavoidable here — CardsShield
           // returns an HTML blob with form + scripts that we have to
           // inject into the DOM. Server-side validation ensures the
-          // response came from our authenticated KingsGate API call,
+          // response came from our authenticated CardsShield API call,
           // so the content is trusted. innerHTML doesn't execute
           // scripts on its own — the effect above re-executes them.
           dangerouslySetInnerHTML={{ __html: paymentFormHtml }}

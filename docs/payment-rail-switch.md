@@ -23,8 +23,8 @@ Replace `<rail>` with either `cardsshield` or `psifi`. Anything else hard-fails 
 
 | Trigger | Action |
 | --- | --- |
-| KingsGate portal shows webhook delivery failures > 5% | Flip to PsiFi |
-| KingsGate PayPal subaccount paused / under review | Flip to PsiFi |
+| CardsShield portal shows webhook delivery failures > 5% | Flip to PsiFi |
+| CardsShield PayPal subaccount paused / under review | Flip to PsiFi |
 | PsiFi API returning > 5% 5xx | Flip to CardsShield |
 | Customer complaints about declines spike on one rail | Investigate the rail; flip if confirmed broken |
 | Planned migration / pricing renegotiation | Flip in advance, leave a week before flipping back |
@@ -69,7 +69,7 @@ Both routes stay live regardless of which rail is primary. A late webhook from t
 
 - **Card decline rate.** Both rails report this in their dashboards.
 - **Webhook delivery success.**
-  - CardsShield → KingsGate portal → Webhooks log
+  - CardsShield → CardsShield portal → Webhooks log
   - PsiFi → app.psifi.app → Webhooks → Endpoints → recent deliveries
 - **Customer-service inbox** for "I paid but no confirmation" emails — early warning of a stuck reconcile / dropped webhook.
 - **Conversion funnel.** Whatever you use (PostHog, GA4, Heap, Mixpanel) — track `checkout_started` → `checkout_session_created` → `checkout_completed` for the day before vs day of. Drop-off > 5% above baseline is worth investigating.
@@ -84,23 +84,23 @@ Fix: `vercel --prod --yes` after every env change. Always.
 
 ### Build fails with `[checkout-config] NEXT_PUBLIC_PRIMARY_CARD_RAIL has invalid value`
 
-The validator caught a typo. Valid values are exactly `cardsshield` or `psifi`.
+The validator caught a typo. Valid values are exactly `cardsshield`, `psifi`, or `quiklie`.
 
 Common typos:
 - `psify` (missing final i)
 - `cardshield` (missing s)
 - `kingsgate` (use `cardsshield` for that rail — the env value is the rail's CLIENT identifier, not the brand)
-- `paypal` (use `cardsshield` — KingsGate's PayPal sub-flow is what `cardsshield` selects)
+- `paypal` (use `cardsshield` — CardsShield's PayPal sub-flow is what `cardsshield` selects)
 
 ### Iframe loads but stays blank
 
 CSP is blocking it. Check the browser console for `Refused to frame ...`. Add the blocked origin to the host's `next.config.ts` CSP `frame-src`. Same applies to `connect-src` for XHR egress from inside the iframe.
 
-### KingsGate iframe loads but PayPal button does nothing
+### CardsShield iframe loads but PayPal button does nothing
 
-KingsGate's PayPal subaccount is paused, or `CS_PAYMENT_GATEWAY=2` (Stripe) is set instead of `1`. Set to `1`.
+CardsShield's PayPal subaccount is paused, or `CS_PAYMENT_GATEWAY=2` (Stripe) is set instead of `1`. Set to `1`.
 
-If the subaccount is paused for real (KingsGate ops issue), flip to PsiFi immediately while you reach out to KingsGate support.
+If the subaccount is paused for real (CardsShield ops issue), flip to PsiFi immediately while you reach out to CardsShield support.
 
 ### PsiFi iframe instantly shows "session expired"
 

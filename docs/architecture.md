@@ -28,8 +28,8 @@ A technical reference for what the kit is actually doing under the hood. Read th
 │  /api/checkout/express          ← CardsShield mint (paymentFormHtml)        │
 │  /api/checkout/express-psifi    ← PsiFi mint (sessionId + url)              │
 │  /api/checkout/result           ← Rail-agnostic polling                     │
-│  /api/cs/notify                 ← KingsGate webhook (verify via API 3.2)    │
-│  /api/cs/order-detail           ← KingsGate API 0 callback                  │
+│  /api/cs/notify                 ← CardsShield webhook (verify via API 3.2)    │
+│  /api/cs/order-detail           ← CardsShield API 0 callback                  │
 │  /api/psifi/notify              ← PsiFi webhook (Svix-verified)             │
 │                                                                             │
 └────────────────────┬────────────────────────────────────────────────────────┘
@@ -38,7 +38,7 @@ A technical reference for what the kit is actually doing under the hood. Read th
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  Gateway side                                                               │
 │                                                                             │
-│  KingsGate         api.cardsshield.com / *.keysidecommerce.com              │
+│  CardsShield         api.cardsshield.com / *.keysidecommerce.com              │
 │   └─ PayPal-backed iframe + sub-rail                                        │
 │                                                                             │
 │  PsiFi             api.psifi.app                                            │
@@ -120,7 +120,7 @@ For CardsShield, there's no equivalent expire API. Stale orders are left to a cl
 
 ## Iframe completion detection
 
-Both rails need to detect when payment completes inside the iframe and navigate the parent window to `/checkout/callback`. The two rails use different mechanisms.
+The two iframe rails (CardsShield + PsiFi) need to detect when payment completes inside the iframe and navigate the parent window to `/checkout/callback`. They use different mechanisms (the third rail, Quiklie, full-page-redirects to a hosted page so there's no in-iframe completion to detect — the customer just lands back at `/checkout/callback` when Quiklie's HPP finishes).
 
 ### PsiFi (`<PsifiEmbeddedFrame>`)
 
@@ -138,27 +138,27 @@ Origin validation: the bridge page lives on our own domain, so `event.origin ===
 
 ### CardsShield (`<CardsShieldEmbeddedFrame>`)
 
-KingsGate's iframe does NOT redirect to a bridge page. Instead, when payment completes, the iframe redirects the PARENT window directly to `/checkout/callback?order_number=...`. So no parent-side completion detection is needed.
+CardsShield's iframe does NOT redirect to a bridge page. Instead, when payment completes, the iframe redirects the PARENT window directly to `/checkout/callback?order_number=...`. So no parent-side completion detection is needed.
 
 What the parent DOES do during the iframe's lifetime:
 
-1. **100ms heartbeat** — sends `cs-platformValidationStatus` + `mecom-paypalPlatformValidationStatus` postMessage to the iframe every tick, telling it our shipping form is valid. Required by the KingsGate spec.
-2. **postMessage listener** — when the iframe asks for shipping data (via `cs-feedbackPlatformValidationStatus` or the `mecom-paypal*` analog), we respond with `cs-platformOrderInfo` containing the shipping payload in KingsGate's exact field shape.
+1. **100ms heartbeat** — sends `cs-platformValidationStatus` + `mecom-paypalPlatformValidationStatus` postMessage to the iframe every tick, telling it our shipping form is valid. Required by the CardsShield spec.
+2. **postMessage listener** — when the iframe asks for shipping data (via `cs-feedbackPlatformValidationStatus` or the `mecom-paypal*` analog), we respond with `cs-platformOrderInfo` containing the shipping payload in CardsShield's exact field shape.
 3. **Resize handler** — the iframe asks the parent to set its height via `mecom-paypalBodyResizeContainer`. We clamp to 192-720px and apply.
-4. **Origin allowlist** — only accept messages from `*.cardsshield.com`, `*.thekingsgateway.com`, `*.paymentshields.com`, `*.keysidecommerce.com`. KingsGate's brand surfaces have multiplied; missing any of these breaks the integration.
+4. **Origin allowlist** — only accept messages from `*.cardsshield.com`, `*.thekingsgateway.com`, `*.paymentshields.com`, `*.keysidecommerce.com`. CardsShield's brand surfaces have multiplied; missing any of these breaks the integration.
 5. **Boot timeout** — 15s after mount, if no postMessage from a CardsShield origin has arrived, show a "payment unavailable" error.
 
 ## API 0 callback (CardsShield-only)
 
-KingsGate's iframe hits `/api/cs/order-detail` DURING iframe mount to read order details. The customer's iframe sits idle until our response comes back, so the endpoint MUST be fast (<500ms) and return the order in the exact spec shape.
+CardsShield's iframe hits `/api/cs/order-detail` DURING iframe mount to read order details. The customer's iframe sits idle until our response comes back, so the endpoint MUST be fast (<500ms) and return the order in the exact spec shape.
 
 The kit's `order-store.ts` is the in-memory backing for this. Production: replace with DB lookup. The response shape is `CSOrderDetail` (see `src/lib/cardsshield.ts`).
 
-Auth: shared-secret via `api_key` query string. KingsGate doesn't use HMAC signing for this call — just the same key we send outbound. Constant-time-equal compare via `verifyApiKeyHeader`.
+Auth: shared-secret via `api_key` query string. CardsShield doesn't use HMAC signing for this call — just the same key we send outbound. Constant-time-equal compare via `verifyApiKeyHeader`.
 
 ## Webhooks
 
-Both rails fire webhooks to notify us when payment completes. The kit handles both with the same general pattern:
+All three rails fire webhooks to notify us when payment completes. The kit handles them with the same general pattern:
 
 1. Read raw body (needed for signature verification — the signature is computed over the exact bytes, not the parsed JSON).
 2. Verify signature.
@@ -213,11 +213,11 @@ Why a separate `findByPsifiSessionId`: PsiFi webhooks identify orders by `sessio
 frame-src:
   'self'
   *.psifi.app                  # PsiFi hosted checkout
-  *.cardsshield.com            # Legacy KingsGate domain
-  *.thekingsgateway.com        # KingsGate docs + portal
-  *.paymentshields.com         # KingsGate gateway API egress
-  *.keysidecommerce.com        # KingsGate iframe body content
-  *.paypal.com                 # PayPal SDK loaded inside the KingsGate iframe
+  *.cardsshield.com            # Legacy CardsShield domain
+  *.thekingsgateway.com        # CardsShield docs + portal
+  *.paymentshields.com         # CardsShield gateway API egress
+  *.keysidecommerce.com        # CardsShield iframe body content
+  *.paypal.com                 # PayPal SDK loaded inside the CardsShield iframe
 
 connect-src:
   'self'
@@ -240,6 +240,6 @@ If you need a runtime-readable rail (e.g. for canary deploys), you'd need to ref
 ## Things the kit deliberately doesn't do
 
 - **No automatic failover.** Today the flip is operator-driven. Real auto-failover requires either a load balancer in front of both rails or a client-side retry that swaps endpoints on 5xx. Both add significant complexity. If you genuinely need <1min outage tolerance, the kit is the wrong tool — you want a multi-region deployment with health-checked routing.
-- **No retry queue.** Failed webhook deliveries from the gateway aren't replayed by us. PsiFi (Svix) retries automatically for 24h. KingsGate retries per their own schedule (typically 3 attempts over 1h).
+- **No retry queue.** Failed webhook deliveries from the gateway aren't replayed by us. PsiFi (Svix) retries automatically for 24h. CardsShield retries per their own schedule (typically 3 attempts over 1h).
 - **No reconciliation cron.** If a webhook is dropped beyond the gateway's retry window, the order sits in `unpaid` forever. Production sites should add a cron that walks `unpaid` orders < N hours old and polls each gateway's status API. The kit's `findRecentMatchingOrder`-style cron is in the broader SWB repo if you need a starting point.
-- **No idempotency cache.** The kit accepts an idempotency-key in the mint request body and passes it to PsiFi's `Idempotency-Key` header / KingsGate's request, so the GATEWAY dedupes. But we don't dedupe at our own server before the gateway call. Production should add a Redis-backed claim/release cache (the broader SWB repo has one in `src/lib/idempotency.ts`).
+- **No idempotency cache.** The kit accepts an idempotency-key in the mint request body and passes it to PsiFi's `Idempotency-Key` header / CardsShield's request, so the GATEWAY dedupes. But we don't dedupe at our own server before the gateway call. Production should add a Redis-backed claim/release cache (the broader SWB repo has one in `src/lib/idempotency.ts`).

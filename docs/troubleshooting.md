@@ -6,7 +6,7 @@ Symptoms and what they mean. Distilled from real production incidents.
 
 The env validator caught a typo. Valid values are exactly `cardsshield`, `psifi`, or `quiklie`.
 
-Common typos to watch for: `psify` (missing final `i`), `cardshield` (missing `s`), `kingsgate` (use `cardsshield` — that env value selects KingsGate's PayPal sub-flow), `quicklie` (extra `c`).
+Common typos to watch for: `psify` (missing final `i`), `cardshield` (missing `s`), `kingsgate` (use `cardsshield` — that env value selects CardsShield's PayPal sub-flow), `quicklie` (extra `c`).
 
 ## Quiklie returns `statusCode: 5` on every mint
 
@@ -42,15 +42,15 @@ Fix: add the blocked origin to the host's `next.config.ts` CSP `frame-src`. If y
 *.quiklie.com
 ```
 
-## KingsGate iframe loads but the PayPal button does nothing
+## CardsShield iframe loads but the PayPal button does nothing
 
-KingsGate's PayPal subaccount is paused, or `CS_PAYMENT_GATEWAY=2` (Stripe) is set instead of `1`. Set to `1` for the PayPal sub-flow. (The kit doesn't ship the Stripe sub-flow because it's a different — server-to-server — integration.)
+CardsShield's PayPal subaccount is paused, or `CS_PAYMENT_GATEWAY=2` (Stripe) is set instead of `1`. Set to `1` for the PayPal sub-flow. (The kit doesn't ship the Stripe sub-flow because it's a different — server-to-server — integration.)
 
 If the subaccount is genuinely paused, flip the rail to PsiFi or Quiklie in the meantime.
 
 ## CardsShield iframe never sends a postMessage; spinner sits forever
 
-The iframe's origin doesn't match the allowlist in `<CardsShieldEmbeddedFrame>`. KingsGate occasionally rotates the iframe-serving CDN to a new subdomain.
+The iframe's origin doesn't match the allowlist in `<CardsShieldEmbeddedFrame>`. CardsShield occasionally rotates the iframe-serving CDN to a new subdomain.
 
 Open dev tools → Console; find the inbound `[CS_FORENSIC]` logs to see the actual message origin. Add the new origin substring to the whitelist in `src/components/CardsShieldEmbeddedFrame.tsx` (search for `origin.includes`).
 
@@ -136,7 +136,7 @@ If embeddable, you can build a `<QuiklieHppFrame>` component (mirror `<PsifiEmbe
 
 This kit is checkout-only. It does NOT integrate with any fulfillment platform (ShipStation, ShipBob, etc.). If you see ShipStation mentioned in your downstream consumer code, that's host-site integration code you've added on top of the kit — not anything this kit ships.
 
-For fulfillment integration patterns (ShipStation Custom Store pull vs push, KingsGate `autoSyncTrackingForOrder`, etc.), see the broader Stillwater BioLabs reference at https://github.com/tovesblake-max/psifi-checkout-starter.
+For fulfillment integration patterns (ShipStation Custom Store pull vs push, CardsShield `autoSyncTrackingForOrder`, etc.), see the broader Stillwater BioLabs reference at https://github.com/tovesblake-max/psifi-checkout-starter.
 
 ## When the kit isn't enough
 

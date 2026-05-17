@@ -1,5 +1,5 @@
 /**
- * PsiFi gateway client (one of the two rails this kit ships).
+ * PsiFi gateway client (one of the three rails this kit ships).
  *
  * Surface area: just what's needed to mint + tear down hosted
  * checkout sessions and verify webhooks. PsiFi documentation:
@@ -133,6 +133,11 @@ export interface CreateCheckoutSessionInput {
    *  this; we recommend 1800 (30 min) for retail checkout. */
   expiresInSeconds?: number;
   metadata?: Record<string, unknown>;
+  /** Explicit idempotency key for the gateway's Idempotency-Key header.
+   *  When unset, falls back to `orderNumber`. Pass the client-supplied
+   *  key here when you want client retries (network blips) to dedupe
+   *  at PsiFi without minting a second session. */
+  idempotencyKey?: string;
 }
 
 export async function createCheckoutSession(
@@ -171,7 +176,7 @@ export async function createCheckoutSession(
     "/checkout-sessions",
     "POST",
     body,
-    { "Idempotency-Key": input.orderNumber },
+    { "Idempotency-Key": input.idempotencyKey || input.orderNumber },
   );
 }
 

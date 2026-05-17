@@ -1,16 +1,17 @@
 {
-  "name": "dual-rail-checkout-kit",
-  "version": "1.0.0",
+  "name": "tri-rail-checkout-kit",
+  "version": "1.1.0",
   "private": true,
-  "description": "Drop-in Next.js 15 checkout kit with hot-swappable PsiFi + CardsShield/KingsGate rails. One env var picks which iframe renders. No PCI scope expansion. Built for AI website builders.",
+  "description": "Drop-in Next.js 15 checkout kit with hot-swappable CardsShield + PsiFi + Quiklie rails. One env var picks which iframe (or HPP redirect) renders. No PCI scope expansion. Built for AI website builders.",
   "keywords": [
     "checkout",
     "payments",
     "embedded-checkout",
     "iframe",
+    "hpp",
     "psifi",
     "cardsshield",
-    "kingsgate",
+    "quiklie",
     "paypal",
     "apple-pay",
     "google-pay",
@@ -38,11 +39,14 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.0.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.0.0",
     "postcss": "^8.5.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.0"

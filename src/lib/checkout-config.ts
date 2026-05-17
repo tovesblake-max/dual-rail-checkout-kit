@@ -1,7 +1,7 @@
 /**
  * The Switch — single source of truth for which card rail is active.
  *
- * Both rails (CardsShield/KingsGate iframe + PsiFi auto-fire iframe)
+ * Both rails (CardsShield/CardsShield iframe + PsiFi auto-fire iframe)
  * stay wired in the codebase 24/7. Flipping the
  * `NEXT_PUBLIC_PRIMARY_CARD_RAIL` env var + redeploying is the
  * entire switch procedure. No code changes.
@@ -46,11 +46,11 @@ export const CARD_RAIL: CardRail = RAW as CardRail;
 
 /**
  * Helper for analytics + display copy. Equivalent to
- * `CARD_RAIL === "cardsshield" ? "KingsGate" : "PsiFi"`.
+ * `CARD_RAIL === "cardsshield" ? "CardsShield" : "PsiFi"`.
  */
 export const ACTIVE_RAIL_LABEL: string =
   CARD_RAIL === "cardsshield"
-    ? "KingsGate"
+    ? "CardsShield"
     : CARD_RAIL === "quiklie"
       ? "Quiklie"
       : "PsiFi";

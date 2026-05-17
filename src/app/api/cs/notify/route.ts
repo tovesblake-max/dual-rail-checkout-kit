@@ -3,9 +3,9 @@ import { getPaymentStatus } from "@/lib/cardsshield";
 import { orderStore } from "@/lib/order-store";
 
 /**
- * CardsShield / KingsGate webhook receiver (Notify URL, API 3.1).
+ * CardsShield / CardsShield webhook receiver (Notify URL, API 3.1).
  *
- * KingsGate fires a GET to this URL when payment completes.
+ * CardsShield fires a GET to this URL when payment completes.
  * Importantly, the inbound webhook itself is NOT the source of
  * truth — per the spec we MUST call API 3.2 (getPaymentStatus) to
  * verify the status server-side before flipping our order.
@@ -16,7 +16,7 @@ import { orderStore } from "@/lib/order-store";
  *             → if status=fail      → mark order failed
  *             → otherwise           → leave as pending; retry next poll
  *
- * The KingsGate side will retry the notify call if we return non-2xx,
+ * The CardsShield side will retry the notify call if we return non-2xx,
  * so always return 200 (with the appropriate body) after handling.
  *
  * Side effects in `after()` for the same reason as the PsiFi handler:
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
     }
   });
 
-  // KingsGate expects a 200 with an empty/ok body to dequeue the
+  // CardsShield expects a 200 with an empty/ok body to dequeue the
   // notify. If we don't return promptly they'll retry.
   return NextResponse.json({ ok: true });
 }

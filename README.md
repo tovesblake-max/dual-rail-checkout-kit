@@ -1,6 +1,6 @@
 # Dual-Rail Checkout Kit
 
-**Drop-in Next.js 15 checkout with hot-swappable PsiFi + CardsShield/KingsGate rails. One env var picks which iframe renders. Same auto-fire UX on both.**
+**Drop-in Next.js 15 checkout with hot-swappable PsiFi + CardsShield/CardsShield rails. One env var picks which iframe renders. Same auto-fire UX on both.**
 
 If you're an AI coding agent, read [AGENTS.md](./AGENTS.md) instead — it has machine-readable integration instructions.
 
@@ -8,7 +8,7 @@ If you're an AI coding agent, read [AGENTS.md](./AGENTS.md) instead — it has m
 
 ## Why this exists
 
-E-commerce sites that depend on a single payment processor break when that processor breaks. KingsGate's PayPal subaccount has gone down. PsiFi's gateway has thrown 502s. Stripe has had multi-hour outages. When it happens to a small merchant, every minute is lost revenue and refunds you'll be writing for weeks.
+E-commerce sites that depend on a single payment processor break when that processor breaks. CardsShield's PayPal subaccount has gone down. PsiFi's gateway has thrown 502s. Stripe has had multi-hour outages. When it happens to a small merchant, every minute is lost revenue and refunds you'll be writing for weeks.
 
 This kit gives you two production-grade card rails wired in parallel, both kept current 24/7, and a single env var to flip between them. Outage on one → flip to the other in 90 seconds. No code change. No customer disruption visible (same UX shape on both).
 
@@ -18,8 +18,8 @@ This kit gives you two production-grade card rails wired in parallel, both kept 
 
 | Rail | UX shape | Backend | Settles | Use when |
 | --- | --- | --- | --- | --- |
-| `cardsshield` | `<CardsShieldEmbeddedFrame>` (inline iframe, auto-fire) | KingsGate API 1.2 → `/api/checkout/express` | Weekly to bank, PayPal owns ID verification, 0% reserve | Default. Near-zero chargebacks. ~3-4% blended rate. |
-| `psifi` | `<PsifiEmbeddedFrame>` (inline iframe, auto-fire) | PsiFi v2 sessions → `/api/checkout/express-psifi` | Daily crypto to wallet, no KYC, no reserve | KingsGate down. Apple Pay / Google Pay / crypto / fiat in one iframe. ~10% rate. |
+| `cardsshield` | `<CardsShieldEmbeddedFrame>` (inline iframe, auto-fire) | CardsShield API 1.2 → `/api/checkout/express` | Weekly to bank, PayPal owns ID verification, 0% reserve | Default. Near-zero chargebacks. ~3-4% blended rate. |
+| `psifi` | `<PsifiEmbeddedFrame>` (inline iframe, auto-fire) | PsiFi v2 sessions → `/api/checkout/express-psifi` | Daily crypto to wallet, no KYC, no reserve | CardsShield down. Apple Pay / Google Pay / crypto / fiat in one iframe. ~10% rate. |
 | `quiklie` | "Pay $X.XX" button → full-page redirect to Quiklie HPP | Quiklie HPP → `/api/checkout/express-quiklie-hpp` | Per Quiklie merchant agreement | High-risk-friendly card processor. PCI SAQ-A via hosted page. No embedded iframe (Quiklie's HPP X-Frame-Options behavior untested). |
 
 `cardsshield` and `psifi` ship the same "single form → auto-fire inline iframe as soon as shipping validates → no Pay button" UX. `quiklie` uses the same form + auto-fire mint, but renders an explicit "Pay" button instead of an iframe (HPP only).
@@ -66,8 +66,8 @@ All three handle coupon re-mints, address edits, and abandoned cart cleanup symm
 
 ```bash
 # 1. Clone + install
-git clone https://github.com/tovesblake-max/dual-rail-checkout-kit.git
-cd dual-rail-checkout-kit
+git clone https://github.com/tovesblake-max/tri-rail-checkout-kit.git
+cd tri-rail-checkout-kit
 npm install
 
 # 2. Configure
@@ -95,7 +95,7 @@ npx vercel
 Set the same env vars in the Vercel dashboard. Configure webhook URLs in each gateway's portal:
 
 - **PsiFi** → `app.psifi.app` → Webhooks → Endpoints → add `https://<your-domain>/api/psifi/notify`
-- **KingsGate** → portal → Webhooks → Notify URL → set to `https://<your-domain>/api/cs/notify`. Also set the Order Detail API URL to `https://<your-domain>/api/cs/order-detail`.
+- **CardsShield** → portal → Webhooks → Notify URL → set to `https://<your-domain>/api/cs/notify`. Also set the Order Detail API URL to `https://<your-domain>/api/cs/order-detail`.
 
 Smoke test by minting a $1 order on each rail. Both should land in your dashboard within 30s.
 
@@ -114,7 +114,7 @@ Replace `<rail>` with `cardsshield` or `psifi`. The build will hard-fail on a ty
 ## What's in the box
 
 ```
-dual-rail-checkout-kit/
+tri-rail-checkout-kit/
 ├── README.md                     # this file
 ├── AGENTS.md                     # instructions for AI coding agents
 ├── INTEGRATION.md                # step-by-step drop-in guide for humans
@@ -144,15 +144,15 @@ dual-rail-checkout-kit/
 │   │       ├── psifi/notify/      # PsiFi webhook
 │   │       ├── quiklie/notify/    # Quiklie webhook
 │   │       └── cs/
-│   │           ├── notify/        # KingsGate webhook
-│   │           └── order-detail/  # KingsGate API 0 callback
+│   │           ├── notify/        # CardsShield webhook
+│   │           └── order-detail/  # CardsShield API 0 callback
 │   ├── components/
 │   │   ├── PsifiEmbeddedFrame.tsx
 │   │   └── CardsShieldEmbeddedFrame.tsx
 │   └── lib/
 │       ├── checkout-config.ts    # the env switch + validator (3 rails)
 │       ├── psifi.ts              # PsiFi gateway client + webhook verify
-│       ├── cardsshield.ts        # KingsGate gateway client + API 0 helper
+│       ├── cardsshield.ts        # CardsShield gateway client + API 0 helper
 │       ├── quiklie.ts            # Quiklie HPP client + refund + webhook verify
 │       ├── catalog.ts            # demo catalog (replace)
 │       └── order-store.ts        # in-memory store (replace with DB)
@@ -191,7 +191,7 @@ The probe also disambiguates Quiklie's confusing `statusCode: 5` failure — dis
 
 ## Troubleshooting
 
-Common symptoms with diagnoses: [docs/troubleshooting.md](./docs/troubleshooting.md). Covers `statusCode 5`, iframe-block CSP errors, Safari ITP, KingsGate origin rotations, PsiFi session expiry, Quiklie refund via API (since the dashboard hides the button), and more.
+Common symptoms with diagnoses: [docs/troubleshooting.md](./docs/troubleshooting.md). Covers `statusCode 5`, iframe-block CSP errors, Safari ITP, CardsShield origin rotations, PsiFi session expiry, Quiklie refund via API (since the dashboard hides the button), and more.
 
 ---
 

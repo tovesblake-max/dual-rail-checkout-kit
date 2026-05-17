@@ -87,6 +87,7 @@ export async function POST(request: Request) {
     customer,
     shippingAddress,
     couponCode,
+    idempotencyKey,
     embedded,
     previousSessionId,
   } = parsed.data;
@@ -132,6 +133,11 @@ export async function POST(request: Request) {
     redirectUrl,
     webhookUrl: `${siteUrl}/api/psifi/notify`,
     expiresInSeconds: 1800,
+    // Pass the client's idempotency key through so a network-retry
+    // of the same logical mint dedupes at PsiFi (not just at our
+    // server). Without this, the gateway falls back to orderNumber
+    // which is fresh per request and won't dedupe a retry.
+    idempotencyKey,
     metadata: {
       order_number: orderNumber,
       coupon: couponCode || null,

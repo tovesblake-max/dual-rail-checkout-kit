@@ -16,7 +16,7 @@ import { CARD_RAIL, ACTIVE_RAIL_LABEL } from "@/lib/checkout-config";
 import { DEMO_ITEM, findCoupon, type Coupon } from "@/lib/catalog";
 
 /**
- * Dual-rail auto-fire checkout demo.
+ * Tri-rail auto-fire checkout demo.
  *
  * UX contract:
  *   - Customer fills name / email / phone / shipping address.
@@ -369,7 +369,7 @@ export default function DemoCheckoutPage() {
     <main className="max-w-5xl mx-auto px-4 py-8 md:py-12">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-1">
-          Dual-rail checkout demo
+          Tri-rail checkout demo
         </h1>
         <p className="text-sm text-muted">
           Fill in the form. The {ACTIVE_RAIL_LABEL} iframe loads itself

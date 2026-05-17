@@ -20,7 +20,7 @@ import { useEffect } from "react";
  * never gets stuck on a loading spinner.
  *
  * This page is PsiFi-specific. The CardsShield rail uses a top-level
- * redirect from KingsGate's iframe directly to /checkout/callback,
+ * redirect from CardsShield's iframe directly to /checkout/callback,
  * so no bridge handoff is needed for that rail.
  */
 

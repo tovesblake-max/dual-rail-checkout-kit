@@ -5,7 +5,7 @@ import { findCoupon } from "@/lib/catalog";
 import { orderStore, generateOrderNumber } from "@/lib/order-store";
 
 /**
- * CardsShield / KingsGate mint route.
+ * CardsShield / CardsShield mint route.
  *
  *   Returns: { orderNumber, total, paymentFormHtml }
  *
@@ -14,10 +14,10 @@ import { orderStore, generateOrderNumber } from "@/lib/order-store";
  *   2. Recompute the total server-side (the client's number is
  *      display-only — never trust it as authoritative).
  *   3. Generate an orderNumber.
- *   4. Stash the order details in the order store so KingsGate's
+ *   4. Stash the order details in the order store so CardsShield's
  *      API 0 callback (/api/cs/order-detail) can return them when
  *      the iframe asks during mount.
- *   5. Call KingsGate API 1.2 (`/custom/get-payment-form`) to mint
+ *   5. Call CardsShield API 1.2 (`/custom/get-payment-form`) to mint
  *      the HTML blob the client will inject into the page.
  *   6. Return { orderNumber, total, paymentFormHtml } to the client.
  *
@@ -28,7 +28,7 @@ import { orderStore, generateOrderNumber } from "@/lib/order-store";
  *     must NOT false-positive)
  *   - Idempotency-key claim/release cache (prevents double-charge
  *     on retried POSTs)
- *   - DB transaction wrapping the order insert + KingsGate call
+ *   - DB transaction wrapping the order insert + CardsShield call
  *     so a gateway 5xx doesn't lose the cart
  *
  * The kit's in-memory order store doesn't survive function cold
@@ -61,7 +61,7 @@ const schema = z.object({
     country: z.string().default("US"),
   }),
   couponCode: z.string().min(1).max(50).optional(),
-  /** Idempotency key. Bound to KingsGate's Idempotency-Key header
+  /** Idempotency key. Bound to CardsShield's Idempotency-Key header
    *  so a network retry of the same logical mint can't double-charge. */
   idempotencyKey: z.string().regex(/^[a-fA-F0-9-]{16,64}$/),
 });
@@ -99,8 +99,8 @@ export async function POST(request: Request) {
 
   const orderNumber = generateOrderNumber();
 
-  // Stash the order BEFORE calling KingsGate so the /api/cs/order-detail
-  // callback (which KingsGate hits DURING form-mount) can find it.
+  // Stash the order BEFORE calling CardsShield so the /api/cs/order-detail
+  // callback (which CardsShield hits DURING form-mount) can find it.
   orderStore.put({
     orderNumber,
     rail: "cardsshield",

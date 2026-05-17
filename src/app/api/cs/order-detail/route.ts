@@ -6,23 +6,23 @@ import {
 import { orderStore } from "@/lib/order-store";
 
 /**
- * KingsGate API 0 — Get Order Detail (inbound).
+ * CardsShield API 0 — Get Order Detail (inbound).
  *
  *   Direction: CS → Platform
- *   Endpoint:  This route. KingsGate hits it during iframe mount.
+ *   Endpoint:  This route. CardsShield hits it during iframe mount.
  *   Auth:      `api_key` query string (same shared key we send
  *              outbound). Verified with constant-time compare via
  *              `verifyApiKeyHeader`.
  *
- * KingsGate calls this WHILE the customer is watching the iframe
+ * CardsShield calls this WHILE the customer is watching the iframe
  * load. The iframe sits idle until our response comes back, so this
  * endpoint MUST be fast (<500ms) and MUST return the order details
  * in the exact shape from the spec.
  *
  * The response shape is `CSOrderDetail` (see `src/lib/cardsshield.ts`).
- * Field names match KingsGate's spec — don't rename.
+ * Field names match CardsShield's spec — don't rename.
  *
- * Idempotent — KingsGate may call this multiple times for the same
+ * Idempotent — CardsShield may call this multiple times for the same
  * order_id (retries, refresh, etc.). Always return the same payload.
  */
 
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     // No local record. In production this would mean a stale
     // session id, a cross-environment leak (prod webhook for dev
     // order), or DB lookup failure. Return 404 in the body but
-    // 200 HTTP so KingsGate doesn't retry forever — they'll surface
+    // 200 HTTP so CardsShield doesn't retry forever — they'll surface
     // the error to the customer's iframe instead.
     return NextResponse.json(
       { code: 404, msg: `unknown order ${orderNumber}` },
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ code: 0, ...detail });
 }
 
-// Some KingsGate integration tests POST this endpoint. Accept both.
+// Some CardsShield integration tests POST this endpoint. Accept both.
 export async function POST(request: Request) {
   return GET(request);
 }

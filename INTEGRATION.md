@@ -8,7 +8,7 @@ A step-by-step walkthrough of dropping this kit into an existing Next.js 15 site
 - Tailwind CSS v4 (the components use `bg-card`, `text-foreground`, etc. — if you use different design tokens, you'll need a small Tailwind theme tweak in `src/app/globals.css`).
 - A deployment provider that supports `next/server` `after()` — Vercel, Cloudflare Workers, or self-hosted Node. (Vercel is most thoroughly tested.)
 - An account with at least ONE of the two gateways:
-  - KingsGate via [thekingsgateway.com](https://thekingsgateway.com)
+  - CardsShield via [thekingsgateway.com](https://thekingsgateway.com)
   - PsiFi via [app.psifi.app](https://app.psifi.app)
 
 You can run with both, but you only need one to ship.
@@ -127,9 +127,9 @@ Open `src/app/api/psifi/notify/route.ts` and `src/app/api/cs/notify/route.ts`. E
 
 You need to:
 
-- Look up the order by `external_id` (PsiFi) or `order_id` (KingsGate).
+- Look up the order by `external_id` (PsiFi) or `order_id` (CardsShield).
 - Flip `paymentStatus` to `paid` in your DB.
-- Save `status.shield_domain` (KingsGate only) to your order row — required for refund + tracking later.
+- Save `status.shield_domain` (CardsShield only) to your order row — required for refund + tracking later.
 - Send a receipt email.
 - Push to fulfillment (ShipStation, ShipBob, whatever).
 - Fire conversion pixels (Meta, GA4, TikTok, etc.).
@@ -146,11 +146,11 @@ All of this happens INSIDE `after()` so the response goes back to the gateway qu
 - Events: `transaction.updated` at minimum
 - Copy the signing secret into `PSIFI_WEBHOOK_SECRET`
 
-### KingsGate
-- Log in to your KingsGate portal
+### CardsShield
+- Log in to your CardsShield portal
 - Find Notify URL setting — set to `https://your-site.com/api/cs/notify`
 - Find Order Detail API URL — set to `https://your-site.com/api/cs/order-detail`
-- (You may also need to add your domain to KingsGate's CSP `frame-ancestors` allowlist if they enforce one. Reach out to KingsGate support if the iframe loads blank.)
+- (You may also need to add your domain to CardsShield's CSP `frame-ancestors` allowlist if they enforce one. Reach out to CardsShield support if the iframe loads blank.)
 
 ## Step 10 — Smoke test
 
@@ -162,7 +162,7 @@ npm run build
 npm run dev
 # → open localhost:3000/your-checkout-page
 # → fill in form → verify iframe loads
-# → complete a $1 test order in PsiFi's sandbox or KingsGate's dev environment
+# → complete a $1 test order in PsiFi's sandbox or CardsShield's dev environment
 # → verify the webhook hits your notify route (check logs)
 # → verify the order flips to "paid" in your DB
 # → verify the customer lands on /checkout/callback with success state
@@ -188,7 +188,7 @@ Replace `<rail>` with `cardsshield` or `psifi`. Full smoke-test procedure: [docs
 
 ### Build fails with `[checkout-config] NEXT_PUBLIC_PRIMARY_CARD_RAIL has invalid value`
 
-The validator caught a typo. Valid values are exactly `cardsshield` or `psifi`. Common typos: `psify` (missing final i), `cardshield` (missing s), `kingsgate` (use `cardsshield` for that rail).
+The validator caught a typo. Valid values are exactly `cardsshield`, `psifi`, or `quiklie`. Common typos: `psify` (missing final i), `cardshield` (missing s), `quicklie` (extra c).
 
 ### Iframe loads but stays blank
 
@@ -206,13 +206,13 @@ You're using the kit's in-memory `order-store.ts` in production. Function cold s
 
 `PSIFI_WEBHOOK_SECRET` is wrong or has whitespace. The kit auto-trims, but copy-paste from a PDF can sneak in non-ASCII characters. Re-copy from the Webhook Portal.
 
-### KingsGate iframe shows blank PayPal button area
+### CardsShield iframe shows blank PayPal button area
 
-KingsGate's PayPal subaccount is paused, OR `CS_PAYMENT_GATEWAY=2` (Stripe) is set instead of `1`. Set to `1` for the embedded-iframe PayPal flow. Stripe is a different (server-to-server) integration the kit doesn't ship.
+CardsShield's PayPal subaccount is paused, OR `CS_PAYMENT_GATEWAY=2` (Stripe) is set instead of `1`. Set to `1` for the embedded-iframe PayPal flow. Stripe is a different (server-to-server) integration the kit doesn't ship.
 
 ### `Refused to load script from .../cs-loader.js due to MIME mismatch`
 
-KingsGate's CDN occasionally serves with the wrong `Content-Type`. Usually transient. If it persists, contact KingsGate support.
+CardsShield's CDN occasionally serves with the wrong `Content-Type`. Usually transient. If it persists, contact CardsShield support.
 
 ## When the kit isn't enough
 

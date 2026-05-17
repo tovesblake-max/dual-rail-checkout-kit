@@ -4,7 +4,7 @@
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  *
  * The kit stores order snapshots in a process-local `Map` keyed by
- * orderNumber. The CardsShield rail needs this because KingsGate's
+ * orderNumber. The CardsShield rail needs this because CardsShield's
  * iframe calls our /api/cs/order-detail endpoint to read order
  * details DURING iframe mount, after the mint route already
  * returned. The PsiFi rail needs it for /api/checkout/result to
@@ -43,6 +43,7 @@ export interface StoredOrder {
     city: string;
     state: string;
     zip: string;
+    country: string;
   };
   totalCents: number;
   /** Cart line items at mint time. */

@@ -1,18 +1,17 @@
 /**
- * CardsShield / KingsGate gateway client (one of the two rails this
- * kit ships).
+ * CardsShield gateway client (one of the three rails this kit ships).
  *
  * Source of truth: https://csdocs.thekingsgateway.com (Integration
  * Guide v2.4)
  *
- * Brand note: the product is now "KingsGate" but the gateway domain
+ * Brand note: the product is now "CardsShield" but the gateway domain
  * is still `cardsshield.com` — env vars + variable names keep the
  * historical `CS_` prefix.
  *
  * PCI scope: SAQ-A. The gateway hosts the card-entry form. Your
  * origin never sees PAN or CVV. Card data flows entirely between
- * the customer's browser, the embedded KingsGate iframe, and
- * KingsGate's PCI-DSS Level 1 infrastructure.
+ * the customer's browser, the embedded CardsShield iframe, and
+ * CardsShield's PCI-DSS Level 1 infrastructure.
  *
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * SURFACE AREA SHIPPED HERE:
@@ -25,7 +24,7 @@
  *   - Tracking sync (API 10.2) — same HMAC contract as refund
  *   - Stripe sub-flow (server-to-server, different choreography)
  *
- * DO NOT MODIFY the public functions below unless KingsGate changes
+ * DO NOT MODIFY the public functions below unless CardsShield changes
  * their API. The shapes here match the spec exactly.
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  */
@@ -41,10 +40,10 @@ const CS_PLATFORM_NAME = (process.env.CS_PLATFORM_NAME || "").trim();
 const CS_ENDPOINT_TOKEN = (process.env.CS_ENDPOINT_TOKEN || "").trim();
 const CS_PAYMENT_GATEWAY = (process.env.CS_PAYMENT_GATEWAY || "1").trim();
 
-// ── Type contracts mirroring the KingsGate API spec ─────────────
+// ── Type contracts mirroring the CardsShield API spec ─────────────
 
 /**
- * KingsGate's status values for API 2.6 / 3.2 responses. The spec
+ * CardsShield's status values for API 2.6 / 3.2 responses. The spec
  * allows the platform to define more values, but these are the
  * canonical ones. Anything else is treated as `pending` and left
  * for the webhook flow to reconcile.
@@ -70,7 +69,7 @@ export interface CSGetPaymentFormResponse extends CSResponseBase {
 
 export interface CSPaymentResultResponse extends CSResponseBase {
   status?: CSPaymentStatus;
-  /** Transaction ID from KingsGate / underlying processor. */
+  /** Transaction ID from CardsShield / underlying processor. */
   trade_no?: string;
   /** Order number echoed back from the platform. */
   order_number?: string;
@@ -115,7 +114,7 @@ function csUrl(path: string): string {
  *
  * Returns the HTML snippet (iframe + bootstrap script) we inject
  * into the checkout payment form area. While the form is loading,
- * KingsGate calls our API 0 to read the order details.
+ * CardsShield calls our API 0 to read the order details.
  *
  * `token` is the same as `order_id` from API 0 — your orderNumber.
  */
@@ -176,12 +175,12 @@ export async function getPaymentStatus(
   return res.json();
 }
 
-// ── API 0: KingsGate calls US to read order details ─────────────
+// ── API 0: CardsShield calls US to read order details ─────────────
 
 /**
  * Order-detail payload that /api/cs/order-detail must return when
- * KingsGate's iframe calls it during form mount. Field names match
- * KingsGate's spec exactly — don't rename.
+ * CardsShield's iframe calls it during form mount. Field names match
+ * CardsShield's spec exactly — don't rename.
  *
  * The kit's bundled /api/cs/order-detail route constructs this from
  * an in-memory store keyed by order_id. In production, replace the
@@ -190,7 +189,7 @@ export async function getPaymentStatus(
 export interface CSOrderDetail {
   /** Your platform-side order id (same as `orderNumber`). */
   order_id: string;
-  /** Total in major units (dollars). KingsGate expects a number. */
+  /** Total in major units (dollars). CardsShield expects a number. */
   amount: number;
   /** ISO currency code, e.g. "USD". */
   currency_code: string;
@@ -209,9 +208,9 @@ export interface CSOrderDetail {
     country: string;
   };
   /**
-   * Cart contents in KingsGate's line-item shape. The total of
+   * Cart contents in CardsShield's line-item shape. The total of
    * line_items[].amount * quantity should match the top-level
-   * `amount`. KingsGate displays the line items in the PayPal
+   * `amount`. CardsShield displays the line items in the PayPal
    * receipt + chargeback ledger.
    */
   line_items: Array<{
@@ -291,14 +290,20 @@ export function buildOrderDetail(input: {
 }
 
 /**
- * Verify an inbound API 0 call from KingsGate carries the expected
+ * Verify an inbound API 0 call from CardsShield carries the expected
  * api_key. CardsShield's API 0 doesn't use HMAC signing — it just
  * passes the shared `api_key` in the query string, same key we send
- * outbound. We compare server-side.
+ * outbound. We compare server-side with constant-time equality so
+ * an attacker can't binary-search the secret via timing.
  */
 export function verifyApiKeyHeader(request: Request): boolean {
   if (!CS_API_KEY) return false;
   const url = new URL(request.url);
   const incoming = url.searchParams.get("api_key");
-  return incoming === CS_API_KEY;
+  if (!incoming || incoming.length !== CS_API_KEY.length) return false;
+  let result = 0;
+  for (let i = 0; i < CS_API_KEY.length; i++) {
+    result |= incoming.charCodeAt(i) ^ CS_API_KEY.charCodeAt(i);
+  }
+  return result === 0;
 }
